@@ -1,0 +1,17 @@
+---
+
+- name: Setting the old nic naming system
+  hosts: all
+  tasks:
+    - name: Modify grub configuration
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^(GRUB_CMDLINE_LINUX=")(.*?)(")'
+        line: '\1\2 net.ifnames=0 biosdevname=0\3'
+        backrefs: yes
+      notify: Update GRUB
+
+  handlers:
+    - name: Update GRUB
+      ansible.builtin.command: update-grub
+
