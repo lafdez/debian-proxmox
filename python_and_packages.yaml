@@ -1,0 +1,67 @@
+---
+
+- name: Bootstraping python interpreter if not installed
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check if the python interpreter is installed
+      ansible.builtin.raw: which python3 && echo "exists" || echo "missing"
+      register: python_check
+      changed_when: false
+
+    - name: Install python3
+      ansible.builtin.raw: apt update -y && apt install -y python3 python3-apt
+      when: "'missing' in python_check.stdout"
+
+- name: Install some packages I like to have
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Install zsh, git, ...
+      ansible.builtin.package:
+        name:
+          - git
+          - zsh
+          - duf
+          - fastfetch
+          - fzf
+          - duf
+          - lsd
+          - tmux
+          - starship
+          - btop
+          - glances
+          - tcpdump
+          - neovim
+          - curl
+          - wget
+        state: present
+        use: apt
+
+- name: Set default shell
+  hosts: all
+  tasks:
+    - name: Set root user shell to zsh
+      ansible.builtin.user:
+        name: root
+        shell: /bin/zsh
+        state: present
+
+- name: Install oh-my-zsh
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Check if it is already installed
+      ansible.builtin.stat:
+        path: "/root/.oh-my-zsh"
+      register: ohmyzsh_check
+    - name: Install oh-my-zsh
+      ansible.builtin.shell: |
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+      when: not ohmyzsh_check.stat.exists
+    - name: Set theme to xiong-chiamiov
+      ansible.builtin.replace:
+        path: "/root/.zshrc"
+        regexp: '^ZSH_THEME=".*"'
+        replace: 'ZSH_THEME="xiong-chiamiov"'
+
