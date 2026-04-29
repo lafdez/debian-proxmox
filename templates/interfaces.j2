@@ -1,0 +1,29 @@
+# Managed by Ansible. Do not edit manually
+
+auto lo
+iface lo inet loopback
+
+auto {{ ansible_facts['default_ipv4']['interface'] }}
+iface {{ ansible_facts['default_ipv4']['interface'] }} inet manual
+
+auto {{ ansible_facts['default_ipv4']['interface'] }}.{{ hetzner_vswitch_lan }}
+iface {{ ansible_facts['default_ipv4']['interface'] }}.{{ hetzner_vswitch_lan }} inet static
+    address {{ hetzner_vswitch_network }}{{ ansible_facts['default_ipv4']['address'].split('.')[-1] }}
+    netmask {{ hetzner_vswitch_netmask}}
+    vlan-raw-device {{ ansible_facts['default_ipv4']['interface'] }}
+    mtu {{ hetzner_vswitch_mtu }}
+
+auto br0
+iface br0 inet static
+    pre-up ifconfig br0 interface> hw ether {{ ansible_facts['default_ipv4']['macaddress'] }}
+    address {{ ansible_facts['default_ipv4']['address'] }}
+    netmask {{ ansible_facts['default_ipv4']['netmask'] }}
+    gateway {{ ansible_facts['default_ipv4']['gateway'] }}
+    hwaddress ether {{ ansible_facts['default_ipv4']['macaddress'] }}
+    bridge_ports eth0
+    bridge_stp off
+    bridge_fd 0
+{% for dns in dns_servers %}
+    dns-nameservers {{ dns }}
+{% endfor %}
+    up route add -net {{ ansible_facts['default_ipv4']['network'] }} netmask {{ ansible_facts['default_ipv4']['netmask'] }} gw {{ ansible_facts['default_ipv4']['gateway'] }} dev br0
