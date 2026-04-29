@@ -50,18 +50,27 @@
         name: root
         shell: /bin/zsh
         state: present
+    - name: Create .zshrc file if it doesn't exist
+      ansible.builtin.file:
+        path: "/root/.zshrc"
+        state: touch
+        owner: root
+        group: root
+        mode: '0600'
 
 - name: Install oh-my-zsh
   hosts: all
-  gather_facts: true
   tasks:
     - name: Check if it is already installed
       ansible.builtin.stat:
         path: "/root/.oh-my-zsh"
       register: ohmyzsh_check
     - name: Install oh-my-zsh
-      ansible.builtin.shell: |
-        curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+      ansible.builtin.shell: "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | /bin/sh"
+      register: ohmyzsh_install
+      when: not ohmyzsh_check.stat.exists
+    - debug:
+        msg: "Oh My Zsh installation output: {{ ohmyzsh_install.stdout }}"
       when: not ohmyzsh_check.stat.exists
     - name: Set theme to xiong-chiamiov
       ansible.builtin.replace:
