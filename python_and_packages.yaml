@@ -11,12 +11,15 @@
 
     - name: Install python3
       ansible.builtin.raw: apt update -y && apt install -y python3 python3-apt
-      when: "'missing' in python_check.stdout"
+      when: "'exists' not in python_check.stdout"
 
 - name: Install some packages I like to have
   hosts: all
   gather_facts: true
   tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
     - name: Install zsh, git, ...
       ansible.builtin.package:
         name:
@@ -35,6 +38,7 @@
           - neovim
           - curl
           - wget
+          - bridge-utils
         state: present
         use: apt
 
@@ -57,7 +61,7 @@
       register: ohmyzsh_check
     - name: Install oh-my-zsh
       ansible.builtin.shell: |
-        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+        curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
       when: not ohmyzsh_check.stat.exists
     - name: Set theme to xiong-chiamiov
       ansible.builtin.replace:
