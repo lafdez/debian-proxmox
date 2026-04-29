@@ -15,14 +15,14 @@ iface {{ ansible_facts['default_ipv4']['interface'] }}.{{ hetzner_vswitch_lan }}
 
 auto br0
 iface br0 inet static
-    pre-up ifconfig br0 hw ether {{ ansible_facts['default_ipv4']['macaddress'] }}
+    hwaddress ether {{ ansible_facts['default_ipv4']['macaddress'] }}
     address {{ ansible_facts['default_ipv4']['address'] }}
     netmask {{ ansible_facts['default_ipv4']['netmask'] }}
     gateway {{ ansible_facts['default_ipv4']['gateway'] }}
-    hwaddress ether {{ ansible_facts['default_ipv4']['macaddress'] }}
-    bridge_ports eth0
+    bridge_ports {{ ansible_facts['default_ipv4']['interface'] }}
     bridge_stp off
     bridge_fd 0
+    bridge_maxwait 0
 {% for dns in dns_servers %}
     dns-nameservers {{ dns }}
 {% endfor %}
