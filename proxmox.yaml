@@ -1,0 +1,89 @@
+---
+
+- name: Migrate to Proxmox VE
+  hosts: all
+  gather_facts: true
+  tasks:
+    - block:
+      - name: Check if Proxmox VE repository is already added
+        ansible.builtin.stat:
+          path: "/etc/apt/sources.list.d/pve-install-repo.sources"
+        register: proxmox_check
+        changed_when: false
+
+      - name: Add Proxmox VE repository key
+        ansible.builtin.get_url:
+          url: https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg
+          dest: /usr/share/keyrings/proxmox-archive-keyring.gpg
+        register: proxmox_key
+        when: not proxmox_check.stat.exists
+
+      - name: Add the repo
+        ansible.builtin.deb822_repository:
+          name: "Proxmox VE No-Subscription Repository"
+          types: deb
+          uris: "http://download.proxmox.com/debian/pve"
+          suites: "trixie"
+          components: "pve-no-subscription"
+          signed_by: "/usr/share/keyrings/proxmox-archive-keyring.gpg"
+        register: proxmox_repo
+        when: not proxmox_check.stat.exists
+
+      - name: Upgrade repository style format
+        ansible.builtin.command: "apt modernize-sources"
+        when: proxmox_repo.changed
+
+      - name: Update repositories and system
+        ansible.builtin.apt:
+          update_cache: yes
+          upgrade: "full"
+        when: proxmox_repo.changed
+    - block:
+      - name: Gather the package facts
+        ansible.builtin.package_facts:
+          manager: auto
+
+      - name: Install Proxmox VE kernel
+        ansible.builtin.apt:
+          name: "proxmox-default-kernel"
+          state: present
+        register: proxmox_kernel
+        when: "'proxmox-default-kernel' not in ansible_facts.packages"
+
+      - name: Update GRUB configuration
+        ansible.builtin.command: "update-grub"
+        when: proxmox_kernel.changed
+
+      - name: Reboot system to apply Proxmox VE kernel
+        ansible.builtin.reboot:
+          reboot_timeout: 600
+          msg: "Rebooting to apply Proxmox VE kernel"
+        when: proxmox_kernel.changed
+
+      - name: Install Proxmox VE packages
+        ansible.builtin.apt:
+          name:
+            - proxmox-ve
+            - postfix
+            - open-iscsi
+            - chrony
+          state: present
+
+      - name: Remove Debian kernel packages
+        ansible.builtin.apt:
+          name:
+            - "linux-image-amd64"
+            - 'linux-image-6.12*'
+          state: absent
+        register: remove_kernel
+        when: "'linux-image-amd64' in ansible_facts.packages or 'linux-image-6.12*' in ansible_facts.packages"
+
+      - name: Update GRUB configuration
+        ansible.builtin.command: "update-grub"
+        when: remove_kernel.changed
+
+      - name: "Remove os-prober to prevent GRUB from detecting other operating systems"
+        ansible.builtin.apt:
+          name: os-prober
+          state: absent
+
