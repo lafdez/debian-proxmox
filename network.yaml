@@ -1,31 +1,35 @@
 ---
 
+- name: Setting the old nic naming system
+  hosts: all
+  tasks:
+    - name: Read grub config file
+      ansible.builtin.find:
+        name: "/etc/default"
+        patterns: "grub"
+        file_type: file
+        read_whole_file: true
+        contains: 'net.ifnames=0.*biosdevname=0'
+      register: grub_config_file
+
+    - name: Modify grub configuration
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^(GRUB_CMDLINE_LINUX=")(.*?)(")'
+        line: '\1\2 net.ifnames=0 biosdevname=0\3'
+        backrefs: yes
+      when: grub_config_file.matched == 0
+      notify: Update GRUB
+
+  handlers:
+    - name: Update GRUB
+      ansible.builtin.command: update-grub
+
 - name: Network setup
   hosts: all
-  vars_files:
-    - variables.yaml
   tasks:
     - name: "Set hostname based on inventory"
       ansible.builtin.hostname:
         name: "{{ inventory_hostname }}"
         use: "debian"
-      register: hostname_change
-      when: ansible_facts['hostname'] != inventory_hostname
-    - name: "Modify /etc/hosts to include new hostname"
-      ansible.builtin.lineinfile:
-        path: "/etc/hosts"
-        regexp: '^({{ ansible_facts["default_ipv4"]["address"] }}).*'
-        line: '\1 {{ inventory_hostname }} {{ inventory_hostname }}.{{ my_domain }}'
-        backrefs: yes
-        state: present
-    - name: "Deploy network configuration file"
-      ansible.builtin.template:
-        src: "templates/interfaces.j2"
-        dest: "/etc/network/interfaces"
-      register: network_config
-      when: ansible_facts['br0'] is not defined
-    - name: Reboot system to apply network changes
-      ansible.builtin.reboot:
-        reboot_timeout: 600
-        msg: "Rebooting to apply network configuration changes"
-      when: network_config.changed
+
