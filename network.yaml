@@ -53,8 +53,8 @@
       ansible.builtin.template:
         src: "templates/interfaces.j2"
         dest: "/etc/network/interfaces"
+        backup: yes
       register: network_config
-      when: ansible_facts['br0'] is not defined
     - name: Reboot system to apply network changes
       ansible.builtin.reboot:
         reboot_timeout: 600

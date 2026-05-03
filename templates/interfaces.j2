@@ -3,23 +3,26 @@
 auto lo
 iface lo inet loopback
 
-auto {{ ansible_facts['default_ipv4']['interface'] }}
-iface {{ ansible_facts['default_ipv4']['interface'] }} inet manual
+auto eth0
+iface eth0 inet manual
 
-auto {{ ansible_facts['default_ipv4']['interface'] }}.{{ hetzner_vswitch_lan }}
-iface {{ ansible_facts['default_ipv4']['interface'] }}.{{ hetzner_vswitch_lan }} inet static
-    address {{ hetzner_vswitch_network }}{{ ansible_facts['default_ipv4']['address'].split('.')[-1] }}
-    netmask {{ hetzner_vswitch_netmask }}
-    vlan-raw-device {{ ansible_facts['default_ipv4']['interface'] }}
+{% for vswitch in hetzner_vswitch %}
+iface eth0.{{ vswitch.vlan_id }} inet manual
+auto br{{ vswitch.vlan_id }}
+iface br{{ vswitch.vlan_id }} inet manual
+    bridge_ports eth0.{{ vswitch.vlan_id }}
+    bridge_stp off
+    bridge_fd 0
     mtu {{ hetzner_vswitch_mtu }}
 
+{% endfor %}
 auto br0
 iface br0 inet static
     hwaddress ether {{ ansible_facts['default_ipv4']['macaddress'] }}
     address {{ ansible_facts['default_ipv4']['address'] }}
     netmask {{ ansible_facts['default_ipv4']['netmask'] }}
     gateway {{ ansible_facts['default_ipv4']['gateway'] }}
-    bridge_ports {{ ansible_facts['default_ipv4']['interface'] }}
+    bridge_ports eth0
     bridge_stp off
     bridge_fd 0
     bridge_maxwait 0
