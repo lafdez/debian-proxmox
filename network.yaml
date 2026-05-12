@@ -50,6 +50,7 @@
         backrefs: yes
         state: present
     - name: "Deploy network configuration file"
+      tags: deploy_config_file
       ansible.builtin.template:
         src: "templates/interfaces.j2"
         dest: "/etc/network/interfaces"
