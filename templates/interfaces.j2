@@ -6,16 +6,6 @@ iface lo inet loopback
 auto eth0
 iface eth0 inet manual
 
-{% for vswitch in hetzner_vswitch %}
-iface eth0.{{ vswitch.vlan_id }} inet manual
-auto br{{ vswitch.vlan_id }}
-iface br{{ vswitch.vlan_id }} inet manual
-    bridge_ports eth0.{{ vswitch.vlan_id }}
-    bridge_stp off
-    bridge_fd 0
-    mtu {{ hetzner_vswitch_mtu }}
-
-{% endfor %}
 auto br0
 iface br0 inet static
     hwaddress ether {{ ansible_facts['default_ipv4']['macaddress'] }}
@@ -30,3 +20,25 @@ iface br0 inet static
     dns-nameservers {{ dns }}
 {% endfor %}
     up route add -net {{ ansible_facts['default_ipv4']['network'] }} netmask {{ ansible_facts['default_ipv4']['netmask'] }} gw {{ ansible_facts['default_ipv4']['gateway'] }} dev br0
+
+iface eth0.{{ hetzner_vswitch_hosts_vlan_id }} inet manual
+auto br{{ hetzner_vswitch_hosts_vlan_id }}
+iface br{{ hetzner_vswitch_hosts_vlan_id }} inet manual
+    address {{ private_ip }}
+    netmask {{ hetzner_vswitch_netmask }}
+    bridge_ports eth0.{{ hetzner_vswitch_hosts_vlan_id }}
+    bridge_stp off
+    bridge_fd 0
+    mtu {{ hetzner_vswitch_mtu }}
+
+iface eth0.{{ hetzner_vswitch_vms_vlan_id }} inet manual
+auto br{{ hetzner_vswitch_vms_vlan_id }}
+iface br{{ hetzner_vswitch_vms_vlan_id }} inet manual
+    address {{ private_ip_vms }}
+    netmask {{ hetzner_vswitch_vms_netmask }}
+    bridge_ports eth0.{{ hetzner_vswitch_vms_vlan_id }}
+    bridge_stp off
+    bridge_fd 0
+    bridge_vlan_aware yes
+    bridge_vids 2-4094
+    mtu {{ hetzner_vswitch_mtu }}
